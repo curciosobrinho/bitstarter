@@ -22,11 +22,47 @@ References:
 */
 
 var fs = require('fs');
+var util = require('util');
 var program = require('commander');
 var cheerio = require('cheerio');
-var HTMLFILE_DEFAULT = "index.html";
+var getUrl = require('restler');
+var URL_DEFAULT = "http://evening-plateau-7685.herokuapp.com"; //my url
+var HTMLFILE_TEMPFILE = "temp_file.html";
+var HTMLFILE_DEFAULT = "temp_file.html";
 var CHECKSFILE_DEFAULT = "checks.json";
 
+//add url support
+
+var assertUrlExists = function(url) {
+    
+    var response2console = buildfn(HTMLFILE_TEMPFILE);
+    
+    getUrl.get(url).on('complete', response2console);
+    
+    return response2console;
+};
+
+var buildfn = function(htmlfile) {
+    var response2console = function(result, response) {
+        if (result instanceof Error) {
+            console.error('Error: Can not read url');
+            return assertFileExists("error_url");
+        } else {
+            //console.error("Wrote %s", htmlfile);
+            fs.writeFileSync(htmlfile, result);
+            url2console(htmlfile, CHECKSFILE_DEFAULT);
+        }
+    };
+    return response2console;
+};
+
+var url2console = function(file, checks) {
+    var checkJson = checkHtmlFile(file, checks);
+    var outJson = JSON.stringify(checkJson, null, 4);
+    console.log(outJson);
+};
+
+//final url 
 var assertFileExists = function(infile) {
     var instr = infile.toString();
     if(!fs.existsSync(instr)) {
@@ -64,11 +100,27 @@ var clone = function(fn) {
 if(require.main == module) {
     program
         .option('-f, --file <html_file>', 'Path to index.html', clone(assertFileExists), HTMLFILE_DEFAULT)
+        .option('-u, --url <html_url>', 'url to save to temp_file.html', clone(assertUrlExists), URL_DEFAULT)
         .option('-c, --checks <check_file>', 'Path to checks.json', clone(assertFileExists), CHECKSFILE_DEFAULT)
         .parse(process.argv);
-    var checkJson = checkHtmlFile(program.file, program.checks);
-    var outJson = JSON.stringify(checkJson, null, 4);
-    console.log(outJson);
-} else {
+    
+    var CheckUrl=false;
+    // print process.argv
+	process.argv.forEach(function(val, index, array) {
+  		if (val=="-u" || val=="--url") {
+  			//console.log("tem url");
+  			CheckUrl=true;
+  		}
+	});
+    
+ 
+    if (CheckUrl==false) {
+    
+     	var checkJson = checkHtmlFile(program.file, program.checks);
+    	var outJson = JSON.stringify(checkJson, null, 4);
+    	console.log(outJson);
+    }
+      
+   } else {
     exports.checkHtmlFile = checkHtmlFile;
 }
